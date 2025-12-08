@@ -1,0 +1,49 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
+use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ClientController;
+use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\AppointmentController;
+use App\Http\Controllers\ReportController;
+
+/*
+|--------------------------------------------------------------------------
+| Web Routes
+|--------------------------------------------------------------------------
+|
+| Ici se trouve la définition des routes de NEXA.
+|
+*/
+
+// --- GUEST ROUTES ---
+Route::middleware('guest')->group(function () {
+    Route::get('/login', [LoginController::class, 'create'])->name('login');
+    Route::post('/login', [LoginController::class, 'store']);
+});
+
+// --- PROTECTED ROUTES ---
+Route::middleware(['auth'])->group(function () {
+    
+    // Déconnexion
+    Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
+
+    // Dashboard (Redirection intelligente selon le rôle plus tard)
+    Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+
+    // Nous ajouterons ici les groupes de routes pour :
+    // - Clients
+    Route::resource('clients', ClientController::class);
+    // - Dossiers
+    Route::resource('dossiers', \App\Http\Controllers\DossierController::class);
+    // - Règlements
+    Route::resource('payments', PaymentController::class)->only(['store', 'update', 'destroy']);
+    // - Rendez-vous
+    Route::resource('appointments', AppointmentController::class)->except(['create', 'edit', 'show']);
+    // - Comptes Rendus
+    Route::resource('reports', ReportController::class)->only(['store', 'update', 'destroy']);
+    Route::get('/reports/{report}/download', [ReportController::class, 'download'])->name('reports.download');
+    Route::post('/reports/{report}/email', [ReportController::class, 'sendEmail'])->name('reports.email');
+});
