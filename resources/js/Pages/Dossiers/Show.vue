@@ -8,8 +8,10 @@
     import { router } from '@inertiajs/vue3';
     import { computed } from 'vue'; // Pour le total
     import ReportModal from '@/Components/ReportModal.vue';
+    import DocumentsTab from './Partials/DocumentsTab.vue';
+    import ActivityFeed from '@/Components/ActivityFeed.vue';
     import { 
-        BriefcaseIcon, CalendarIcon, BanknotesIcon, DocumentTextIcon, 
+        BriefcaseIcon, CalendarIcon, BanknotesIcon, DocumentTextIcon, PaperClipIcon,
         PencilIcon, ArrowLeftIcon, PlusIcon, TrashIcon, PencilSquareIcon, ClockIcon, MapPinIcon, UserCircleIcon, ArrowDownTrayIcon, PaperAirplaneIcon
     } from '@heroicons/vue/24/outline';
     import DossierFormSlideOver from './Partials/DossierFormSlideOver.vue';
@@ -25,6 +27,8 @@
         { name: 'Règlements', icon: BanknotesIcon },
         { name: 'Rendez-vous', icon: CalendarIcon },
         { name: 'Comptes Rendus', icon: DocumentTextIcon },
+        { name: 'Documents', icon: PaperClipIcon },
+        { name: 'Historique', icon: ClockIcon }
     ];
 
     const statusColors = {
@@ -415,6 +419,14 @@
                     />
                 </TabPanel>
 
+                <TabPanel class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-900/5 focus:outline-none">
+                    <DocumentsTab :dossier="dossier" />
+                </TabPanel>
+                
+                <TabPanel class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-900/5 focus:outline-none">
+                    <h3 class="text-base font-semibold leading-6 text-slate-900 mb-6">Journal d'activité</h3>
+                    <ActivityFeed :activities="activities" />
+                </TabPanel>
             </TabPanels>
         </TabGroup>
 

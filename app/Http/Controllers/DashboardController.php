@@ -32,23 +32,28 @@ class DashboardController extends Controller
         ];
 
         // 2. Prochains Rendez-vous (Les 5 prochains à venir)
-        $upcomingAppointments = Appointment::with(['dossier.client'])
+        $upcomingAppointments = Appointment::with(['dossier.client', 'client']) // On charge aussi 'client' direct au cas où
             ->where('start_time', '>=', Carbon::now())
             ->orderBy('start_time', 'asc')
             ->take(5)
             ->get()
             ->map(function ($apt) {
+                // Logique sécurisée : On cherche le nom via le dossier OU via le client direct
+                // L'opérateur '?->' empêche le crash si 'dossier' ou 'client' est null
+                $clientName = $apt->dossier?->client?->name 
+                              ?? $apt->client?->name 
+                              ?? 'Client Inconnu';
+
                 return [
                     'id' => $apt->id,
                     'title' => $apt->title,
                     'start_time' => $apt->start_time,
                     'type' => $apt->type,
-                    // Si le RDV est lié à un dossier, on affiche le client, sinon "Divers"
-                    'client_name' => $apt->dossier ? $apt->dossier->client->name : ($apt->client ? $apt->client->name : 'N/A'),
+                    'client_name' => $clientName,
                 ];
             });
 
-        // 3. Dossiers Récents (Les 5 derniers créés ou modifiés)
+        // 3. Dossiers Récents (CORRECTION ICI 👇)
         $recentDossiers = Dossier::with('client')
             ->orderBy('updated_at', 'desc')
             ->take(5)
@@ -58,7 +63,8 @@ class DashboardController extends Controller
                     'id' => $d->id,
                     'ref' => $d->ref_number,
                     'subject' => $d->subject,
-                    'client_name' => $d->client->name,
+                    // Ici aussi, on utilise '?->name' et '??' pour gérer les orphelins
+                    'client_name' => $d->client?->name ?? 'Client supprimé', 
                     'status' => $d->status,
                     'updated_at' => $d->updated_at,
                 ];

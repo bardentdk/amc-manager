@@ -17,9 +17,11 @@ const submit = () => {
 
     <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-slate-50">
         <div class="mb-8 text-center">
-            <h1 class="text-4xl font-extrabold tracking-tight text-slate-900">
+            <!-- <h1 class="text-4xl font-extrabold tracking-tight text-slate-900">
                 NEXA
-            </h1>
+            </h1> -->
+            <img src="https://assets.zyrosite.com/dOqyRXMokNu852kG/amc-interpra-c-tariat-1-mP4nRPXJQnfyKQQg.svg" alt="" />
+            <hr style="margin-top:20px; margin-bottom:20px;">
             <p class="text-slate-500 text-sm mt-2">Gestion Cabinet & Clients</p>
         </div>
 

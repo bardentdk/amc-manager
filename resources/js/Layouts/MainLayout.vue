@@ -84,7 +84,7 @@ const navigation = [
             
             <header class="sticky top-0 z-30 flex items-center justify-between px-8 py-5 bg-slate-50/80 backdrop-blur-xl border-b border-slate-200/50">
                 <h1 class="text-2xl font-bold text-slate-900 tracking-tight">
-                    <slot name="header">Nexa</slot>
+                    <slot name="header">AMC JURIDIQUE</slot>
                 </h1>
 
                 <div class="flex items-center gap-5">

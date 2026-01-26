@@ -81,10 +81,15 @@ class DossierController extends Controller
             'lawyer', 
             'payments' => fn($q) => $q->orderBy('payment_date', 'desc'),
             'appointments' => fn($q) => $q->orderBy('start_time', 'asc'),
+            'documents' => fn($q) => $q->orderBy('created_at', 'desc'),
             // Ajout des rapports 👇
             'reports' => fn($q) => $q->with('author')->orderBy('report_date', 'desc') 
         ]);
-        
+        $activities = \Spatie\Activitylog\Models\Activity::where('subject_type', Dossier::class)
+            ->where('subject_id', $dossier->id)
+            ->with('causer') // L'utilisateur qui a fait l'action
+            ->orderBy('created_at', 'desc')
+            ->get();
         // N'oublie pas d'ajouter la relation reports() dans le modèle Dossier si ce n'est pas fait !
 
         $clients = Client::select('id', 'name')->orderBy('name')->get();
@@ -94,6 +99,7 @@ class DossierController extends Controller
             'dossier' => $dossier,
             'clients' => $clients,
             'lawyers' => $lawyers,
+            'activities' => $activities, 
         ]);
     }
 

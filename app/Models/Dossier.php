@@ -5,10 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class Dossier extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, LogsActivity;
 
     protected $fillable = [
         'ref_number',
@@ -25,7 +27,14 @@ class Dossier extends Model
     {
         return $this->belongsTo(Client::class);
     }
-
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logAll() // Log tous les champs
+            ->logOnlyDirty() // Seulement ce qui a changé
+            ->dontSubmitEmptyLogs()
+            ->useLogName('dossier');
+    }
     public function lawyer()
     {
         return $this->belongsTo(User::class, 'lawyer_id');
@@ -40,5 +49,8 @@ class Dossier extends Model
     public function reports()
     {
         return $this->hasMany(Report::class);
+    }
+    public function documents(){
+        return $this->hasMany(Document::class);
     }
 }

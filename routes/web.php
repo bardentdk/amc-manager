@@ -8,6 +8,7 @@ use App\Http\Controllers\ClientController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\DocumentController;
 
 /*
 |--------------------------------------------------------------------------
@@ -46,4 +47,11 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('reports', ReportController::class)->only(['store', 'update', 'destroy']);
     Route::get('/reports/{report}/download', [ReportController::class, 'download'])->name('reports.download');
     Route::post('/reports/{report}/email', [ReportController::class, 'sendEmail'])->name('reports.email');
+
+    // Gestion documentaire : 
+    Route::post('/documents', [DocumentController::class, 'store'])->name('documents.store');
+    Route::get('/documents/{document}/download', [DocumentController::class, 'download'])->name('documents.download');
+    Route::get('/documents/{document}/preview', [DocumentController::class, 'preview'])->name('documents.preview');
+    Route::delete('/documents/{document}', [DocumentController::class, 'destroy'])->name('documents.destroy');
+
 });
