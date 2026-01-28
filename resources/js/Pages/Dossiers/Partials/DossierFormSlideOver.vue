@@ -117,11 +117,10 @@ const submit = () => {
                                                     <div class="mt-2">
                                                         <select 
                                                             id="lawyer" 
-                                                            v-model="form.user_id" 
+                                                            v-model="form.lawyer_id" 
                                                             class="block w-full rounded-md border-0 py-1.5 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
                                                         >
-                                                            <option :value="null">Aucun</option>
-                                                            <option v-for="lawyer in lawyers" :key="lawyer.id" :value="lawyer.id">
+                                                            <option :value="null">Aucun</option> <option v-for="lawyer in lawyers" :key="lawyer.id" :value="lawyer.id">
                                                                 {{ lawyer.name }}
                                                             </option>
                                                         </select>
