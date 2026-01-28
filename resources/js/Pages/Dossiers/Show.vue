@@ -18,6 +18,7 @@
 
     const props = defineProps({
         dossier: Object,
+        lawyers: Array,
     });
 
     const isEditOpen = ref(false);

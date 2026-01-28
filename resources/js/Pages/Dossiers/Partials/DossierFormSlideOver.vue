@@ -112,11 +112,21 @@ const submit = () => {
                                             </div>
 
                                             <div>
-                                                <label class="block text-sm font-medium text-slate-700">Avocat en charge</label>
-                                                <select v-model="form.lawyer_id" class="mt-1 block w-full rounded-md border-slate-300 py-2 shadow-sm sm:text-sm">
-                                                    <option value="">Aucun</option>
-                                                    <option v-for="l in lawyers" :key="l.id" :value="l.id">{{ l.name }}</option>
-                                                </select>
+                                                <div class="sm:col-span-2">
+                                                    <label for="lawyer" class="block text-sm font-medium leading-6 text-slate-900">Avocat référent</label>
+                                                    <div class="mt-2">
+                                                        <select 
+                                                            id="lawyer" 
+                                                            v-model="form.user_id" 
+                                                            class="block w-full rounded-md border-0 py-1.5 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                                                        >
+                                                            <option :value="null">Aucun</option>
+                                                            <option v-for="lawyer in lawyers" :key="lawyer.id" :value="lawyer.id">
+                                                                {{ lawyer.name }}
+                                                            </option>
+                                                        </select>
+                                                    </div>
+                                                </div>
                                             </div>
 
                                             <div>
