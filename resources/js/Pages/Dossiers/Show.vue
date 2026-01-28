@@ -19,6 +19,7 @@
     const props = defineProps({
         dossier: Object,
         lawyers: Array,
+        clients: Array,
         activities: Array,
     });
 
@@ -435,9 +436,9 @@
         <DossierFormSlideOver 
             :show="isEditOpen" 
             :dossier="dossier" 
-            :clients="[]" 
-            :lawyers="[]"
-            @close="refreshDossier" 
+            :clients="clients" 
+            :lawyers="lawyers"
+            @close="refreshDossier"
         />
         </MainLayout>
 </template>
