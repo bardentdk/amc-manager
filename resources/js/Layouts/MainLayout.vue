@@ -5,7 +5,8 @@ import {
     HomeIcon, 
     UsersIcon, 
     FolderIcon, 
-    CalendarIcon, 
+    CalendarIcon,
+    UserPlusIcon,
     ArrowRightOnRectangleIcon, 
     BellIcon, 
     MagnifyingGlassIcon 
@@ -19,6 +20,7 @@ const navigation = [
     { name: 'Clients', href: route('clients.index'), icon: UsersIcon, active: route().current('clients.*') },
     { name: 'Dossiers', href: route('dossiers.index'), icon: FolderIcon, active: route().current('dossiers.*') },
     { name: 'Agenda', href: route('appointments.index'), icon: CalendarIcon, active: route().current('appointments.*') },
+    { name: 'Utilisateurs', href: route('users.index'), icon: UserPlusIcon, active: route().current('users.*') },
 ];
 </script>
 

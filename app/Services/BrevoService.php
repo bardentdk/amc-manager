@@ -64,4 +64,41 @@ class BrevoService
             throw $e;
         }
     }
+    /**
+     * Envoie les identifiants au nouvel utilisateur
+     */
+    public function sendWelcomeEmail($toEmail, $toName, $password, $role)
+    {
+        $subject = "Bienvenue chez NEXA - Vos identifiants de connexion";
+        
+        // On traduit le rôle pour l'affichage (ex: lawyer -> Avocat)
+        $roleDisplay = match($role) {
+            'admin' => 'Administrateur',
+            'lawyer' => 'Avocat',
+            'assistant' => 'Assistant(e)',
+            default => $role,
+        };
+
+        $htmlContent = "
+            <div style='font-family: Arial, sans-serif; color: #333;'>
+                <h1 style='color: #4f46e5;'>Bienvenue chez NEXA, $toName !</h1>
+                <p>Un compte administrateur vient de vous créer un accès <strong>$roleDisplay</strong> sur la plateforme de gestion du cabinet.</p>
+                
+                <div style='background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;'>
+                    <p style='margin: 0;'><strong>Vos identifiants de connexion :</strong></p>
+                    <ul style='list-style: none; padding-left: 0;'>
+                        <li>📧 Email : <strong>$toEmail</strong></li>
+                        <li>🔑 Mot de passe temporaire : <strong>$password</strong></li>
+                    </ul>
+                </div>
+
+                <p>Veuillez vous connecter dès maintenant : <a href='" . config('app.url') . "' style='color: #4f46e5; font-weight: bold;'>Accéder à mon espace</a></p>
+                <p><em>Pour votre sécurité, nous vous conseillons de changer ce mot de passe dès votre première connexion.</em></p>
+                <br>
+                <p>Cordialement,<br>L'équipe technique NEXA.</p>
+            </div>
+        ";
+
+        return $this->sendEmail($toEmail, $toName, $subject, $htmlContent);
+    }
 }

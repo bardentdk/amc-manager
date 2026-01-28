@@ -9,6 +9,7 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\UserController;
 
 /*
 |--------------------------------------------------------------------------
@@ -27,7 +28,8 @@ Route::middleware('guest')->group(function () {
 
 // --- PROTECTED ROUTES ---
 Route::middleware(['auth'])->group(function () {
-    
+    // Gestion des Utilisateurs (Admin)
+    Route::resource('users', UserController::class)->only(['index', 'store', 'destroy']);
     // Déconnexion
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
 
