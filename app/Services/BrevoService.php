@@ -18,17 +18,19 @@ class BrevoService
 
     public function __construct()
     {
+        
         $config = Configuration::getDefaultConfiguration()->setApiKey('api-key', config('app.brevo_api_key', env('BREVO_API_KEY')));
         $client = new Client(['verify' => false]);
         // On utilise env() ici pour tester rapidement
-        $apiKey = env('BREVO_API_KEY'); 
+        // $apiKey = env('BREVO_API_KEY'); 
+        $this->apiKey = config('services.brevo.key');
         
         if (!$apiKey) {
             Log::error("Clé API Brevo manquante dans le .env");
         }
 
-        $config = Configuration::getDefaultConfiguration()->setApiKey('api-key', $apiKey);
-        $this->apiInstance = new TransactionalEmailsApi($client, $config);    
+        $config = Configuration::getDefaultConfiguration()->setApiKey('api-key', $this->apiKey);
+        $this->apiInstance = new TransactionalEmailsApi(new Client(), $config);  
     }
 
     /**
@@ -36,6 +38,9 @@ class BrevoService
      */
     public function sendEmail($toEmail, $toName, $subject, $htmlContent, $attachmentContent = null, $attachmentName = null)
     {
+        // ICI AUSSI, on utilise la config
+        $senderEmail = config('services.brevo.sender_email');
+        $senderName = config('services.brevo.sender_name');
         $sendSmtpEmail = new SendSmtpEmail();
         $sender = new SendSmtpEmailSender([
             'name' => env('BREVO_SENDER_NAME', 'NEXA App'), 
