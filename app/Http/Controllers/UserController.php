@@ -15,15 +15,11 @@ class UserController extends Controller
 {
     public function index()
     {
-        // On récupère les utilisateurs avec leurs rôles
-        $users = User::with('roles')->latest()->get();
-        
-        // On récupère la liste des rôles possibles pour le formulaire (sauf super-admin si besoin)
-        $roles = Role::pluck('name');
-
         return Inertia::render('Users/Index', [
-            'users' => $users,
-            'availableRoles' => $roles
+            'users' => User::with('roles')->latest()->get(),
+            
+            // ICI : On envoie la liste des noms de rôles au frontend
+            'availableRoles' => Role::pluck('name'), 
         ]);
     }
 

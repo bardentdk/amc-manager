@@ -34,7 +34,7 @@ class BrevoService
     /**
      * Envoie un email transactionnel simple ou avec pièce jointe
      */
-    public function sendEmail($toEmail, $toName, $subject, $htmlContent, $attachmentContent, $attachmentName)
+    public function sendEmail($toEmail, $toName, $subject, $htmlContent, $attachmentContent = null, $attachmentName = null)
     {
         $sendSmtpEmail = new SendSmtpEmail();
         $sender = new SendSmtpEmailSender([
