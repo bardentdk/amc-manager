@@ -102,13 +102,13 @@ const formatRole = (role) => {
                 <form @submit.prevent="submit" class="space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-slate-700">Nom complet</label>
-                        <input v-model="form.name" type="text" class="mt-1 block w-full rounded-xl border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="Ex: Jean Dupont" required />
+                        <input v-model="form.name" type="text" class="py-3 px-3 mt-1 block w-full rounded-xl border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="Ex: Jean Dupont" required />
                         <div v-if="form.errors.name" class="text-rose-500 text-xs mt-1">{{ form.errors.name }}</div>
                     </div>
 
                     <div>
                         <label class="block text-sm font-medium text-slate-700">Adresse Email</label>
-                        <input v-model="form.email" type="email" class="mt-1 block w-full rounded-xl border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="jean@nexa.app" required />
+                        <input v-model="form.email" type="email" class="py-3 px-3 mt-1 block w-full rounded-xl border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="jean@nexa.app" required />
                         <div v-if="form.errors.email" class="text-rose-500 text-xs mt-1">{{ form.errors.email }}</div>
                     </div>
 
