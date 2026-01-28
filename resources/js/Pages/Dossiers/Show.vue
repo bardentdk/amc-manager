@@ -1,26 +1,25 @@
 <script setup>
-    import { ref } from 'vue';
-    import { Head, Link } from '@inertiajs/vue3';
+    import { ref, computed } from 'vue';
+    import { Head, Link, router } from '@inertiajs/vue3';
     import MainLayout from '@/Layouts/MainLayout.vue';
     import { TabGroup, TabList, Tab, TabPanels, TabPanel } from '@headlessui/vue';
-    import PaymentModal from '@/Components/PaymentModal.vue'; // <--- Nouveau
+    import PaymentModal from '@/Components/PaymentModal.vue'; 
     import AppointmentModal from '@/Components/AppointmentModal.vue';
-    import { router } from '@inertiajs/vue3';
-    import { computed } from 'vue'; // Pour le total
     import ReportModal from '@/Components/ReportModal.vue';
     import DocumentsTab from './Partials/DocumentsTab.vue';
     import ActivityFeed from '@/Components/ActivityFeed.vue';
+    import DossierFormSlideOver from './Partials/DossierFormSlideOver.vue';
     import { 
         BriefcaseIcon, CalendarIcon, BanknotesIcon, DocumentTextIcon, PaperClipIcon,
-        PencilIcon, ArrowLeftIcon, PlusIcon, TrashIcon, PencilSquareIcon, ClockIcon, MapPinIcon, UserCircleIcon, ArrowDownTrayIcon, PaperAirplaneIcon
+        PencilIcon, ArrowLeftIcon, PlusIcon, TrashIcon, ClockIcon, MapPinIcon, ArrowDownTrayIcon, PaperAirplaneIcon
     } from '@heroicons/vue/24/outline';
-    import DossierFormSlideOver from './Partials/DossierFormSlideOver.vue';
 
+    // Props complétées pour éviter les erreurs undefined
     const props = defineProps({
         dossier: Object,
         lawyers: Array,
-        clients: Array,
-        activities: Array,
+        clients: Array,     // AJOUTÉ
+        activities: Array,  // AJOUTÉ
     });
 
     const isEditOpen = ref(false);
@@ -41,10 +40,9 @@
         closed: 'bg-slate-100 text-slate-600',
     };
 
-    // On utilise Inertia "reload" pour rafraichir les données si on édite via le slideover
     const refreshDossier = () => {
         isEditOpen.value = false;
-        window.location.reload(); // Simple refresh pour l'instant
+        window.location.reload(); 
     };
 
     // --- Logique Paiements ---
@@ -67,19 +65,16 @@
         }
     };
 
-    // Calcul du total encaissé (statut 'paid' ou 'partial')
     const totalPaid = computed(() => {
         return props.dossier.payments
             .filter(p => p.status === 'paid' || p.status === 'partial')
             .reduce((sum, p) => sum + parseFloat(p.amount), 0);
     });
 
-    // Formatage monétaire
     const formatCurrency = (value) => {
         return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(value);
     };
 
-    // Helpers Date
     const formatDate = (date) => new Date(date).toLocaleDateString('fr-FR');
 
     // --- Logique RDV ---
@@ -142,12 +137,11 @@
         phone_call: 'Appel',
     };
 
-    // Fonction pour déclencher l'envoi email
     const sendReportByEmail = (report) => {
         if (confirm(`Envoyer ce rapport par email au client (${props.dossier.client.email || 'Pas d\'email'}) ?`)) {
             router.post(route('reports.email', report.id), {}, {
                 preserveScroll: true,
-                onSuccess: () => alert('Email envoyé !'), // Tu pourras utiliser un Toast notification plus tard
+                onSuccess: () => alert('Email envoyé !'), 
             });
         }
     };
@@ -378,18 +372,6 @@
                                     <span class="text-sm font-bold text-slate-900">{{ reportTypeLabels[report.type] || report.type }}</span>
                                     <span v-if="report.status === 'draft'" class="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">Brouillon</span>
                                 </div>
-                                <!-- <div class="flex items-center text-xs text-slate-400 gap-2">
-                                    <span>{{ formatDate(report.report_date) }}</span>
-                                    <span>•</span>
-                                    <div class="flex items-center">
-                                        <UserCircleIcon class="h-3 w-3 mr-1" />
-                                        {{ report.author?.name }}
-                                    </div>
-                                    <div class="hidden group-hover:flex gap-2 ml-4">
-                                        <button @click="openReportEdit(report)" class="text-indigo-600 hover:text-indigo-900 font-medium">Éditer</button>
-                                        <button @click="deleteReport(report)" class="text-red-400 hover:text-red-600 font-medium">Supprimer</button>
-                                    </div>
-                                </div> -->
                                 <div class="flex items-center gap-2 ml-auto"> <a :href="route('reports.download', report.id)" target="_blank" class="p-1 text-slate-400 hover:text-indigo-600 transition" title="Télécharger PDF">
                                         <ArrowDownTrayIcon class="h-4 w-4" />
                                     </a>
@@ -438,7 +420,7 @@
             :dossier="dossier" 
             :clients="clients" 
             :lawyers="lawyers"
-            @close="refreshDossier"
+            @close="refreshDossier" 
         />
-        </MainLayout>
+    </MainLayout>
 </template>

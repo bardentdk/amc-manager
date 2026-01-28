@@ -15,36 +15,35 @@ use GuzzleHttp\Client;
 class BrevoService
 {
     protected $apiInstance;
+    protected $apiKey;
 
     public function __construct()
     {
-        
-        $config = Configuration::getDefaultConfiguration()->setApiKey('api-key', config('app.brevo_api_key', env('BREVO_API_KEY')));
-        $client = new Client(['verify' => false]);
-        // On utilise env() ici pour tester rapidement
-        // $apiKey = env('BREVO_API_KEY'); 
+        // On récupère la clé via la config pour supporter le cache de Forge
         $this->apiKey = config('services.brevo.key');
         
-        if (!$apiKey) {
-            Log::error("Clé API Brevo manquante dans le .env");
+        if (!$this->apiKey) {
+            Log::error("Clé API Brevo manquante dans la configuration (services.brevo.key). Vérifiez config/services.php");
         }
 
+        // Configuration du client API
         $config = Configuration::getDefaultConfiguration()->setApiKey('api-key', $this->apiKey);
-        $this->apiInstance = new TransactionalEmailsApi(new Client(), $config);  
+        $this->apiInstance = new TransactionalEmailsApi(new Client(['verify' => false]), $config);  
     }
 
     /**
      * Envoie un email transactionnel simple ou avec pièce jointe
+     * Note: Les arguments attachment sont optionnels (= null)
      */
     public function sendEmail($toEmail, $toName, $subject, $htmlContent, $attachmentContent = null, $attachmentName = null)
     {
-        // ICI AUSSI, on utilise la config
         $senderEmail = config('services.brevo.sender_email');
-        $senderName = config('services.brevo.sender_name');
+        $senderName = config('services.brevo.sender_name', 'NEXA App');
+
         $sendSmtpEmail = new SendSmtpEmail();
         $sender = new SendSmtpEmailSender([
-            'name' => env('BREVO_SENDER_NAME', 'NEXA App'), 
-            'email' => env('BREVO_SENDER_EMAIL')
+            'name' => $senderName, 
+            'email' => $senderEmail
         ]);
         $sendSmtpEmail->setSender($sender);
 
@@ -54,6 +53,7 @@ class BrevoService
         $sendSmtpEmail->setSubject($subject);
         $sendSmtpEmail->setHtmlContent($htmlContent);
 
+        // Ajout de la pièce jointe SEULEMENT si elle existe
         if ($attachmentContent && $attachmentName) {
             $attachment = new SendSmtpEmailAttachment();
             $attachment->setName($attachmentName);
@@ -69,6 +69,7 @@ class BrevoService
             throw $e;
         }
     }
+
     /**
      * Envoie les identifiants au nouvel utilisateur
      */
@@ -76,7 +77,6 @@ class BrevoService
     {
         $subject = "Bienvenue chez NEXA - Vos identifiants de connexion";
         
-        // On traduit le rôle pour l'affichage (ex: lawyer -> Avocat)
         $roleDisplay = match($role) {
             'admin' => 'Administrateur',
             'lawyer' => 'Avocat',
@@ -104,6 +104,7 @@ class BrevoService
             </div>
         ";
 
+        // Appel sans pièce jointe (les arguments nulls par défaut seront utilisés)
         return $this->sendEmail($toEmail, $toName, $subject, $htmlContent);
     }
 }
