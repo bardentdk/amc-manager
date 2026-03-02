@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Appointment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redirect;
+use App\Services\BrevoService;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Carbon\Carbon;
 
@@ -43,7 +45,7 @@ class AppointmentController extends Controller
             'filters' => $request->only(['filter', 'search']),
         ]);
     }
-    public function store(Request $request)
+    public function store(Request $request, BrevoService $brevo)
     {
         $validated = $request->validate([
             'dossier_id' => 'nullable|exists:dossiers,id',
@@ -61,9 +63,29 @@ class AppointmentController extends Controller
             $validated['client_id'] = $dossier->client_id;
         }
 
-        Appointment::create($validated);
+        $appointment = Appointment::create($request->all());
 
-        return Redirect::back()->with('success', 'Rendez-vous planifié.');
+        // On charge le dossier et le client pour récupérer l'email
+        $appointment->load(['dossier.client']);
+
+        // Envoi de l'email au client si on a son adresse
+        $client = $appointment->dossier->client;
+        
+        if ($client && $client->email) {
+            try {
+                $brevo->sendAppointmentNotification(
+                    $client->email, 
+                    $client->name, 
+                    $appointment, 
+                    'confirmation'
+                );
+            } catch (\Exception $e) {
+                // On log l'erreur pour ne pas bloquer l'interface de l'assistant(e)
+                Log::error("Erreur d'envoi de confirmation de RDV: " . $e->getMessage());
+            }
+        }
+
+        return redirect()->back()->with('success', 'Rendez-vous créé et email de confirmation envoyé.');
     }
 
     public function update(Request $request, Appointment $appointment)
@@ -88,4 +110,6 @@ class AppointmentController extends Controller
         $appointment->delete();
         return Redirect::back()->with('success', 'Rendez-vous supprimé.');
     }
+
+    
 }

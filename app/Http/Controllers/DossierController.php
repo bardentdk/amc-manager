@@ -9,6 +9,8 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Auth;
+use App\Models\Appointment;
+use App\Services\BrevoService;
 
 class DossierController extends Controller
 {
@@ -56,27 +58,47 @@ class DossierController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    // public function store(Request $request)
+    // {
+    //     // Génération de ref si vide (Format: ANNEE-00X)
+    //     if (empty($request->ref_number)) {
+    //         $count = Dossier::whereYear('created_at', date('Y'))->count() + 1;
+    //         $request->merge(['ref_number' => date('Y') . '-' . str_pad($count, 3, '0', STR_PAD_LEFT)]);
+    //     }
+
+    //     $validated = $request->validate([
+    //         'client_id' => 'required|exists:clients,id',
+    //         'lawyer_id' => 'nullable|exists:users,id',
+    //         'type' => 'required|string',
+    //         'status' => 'required|string',
+    //         'subject' => 'required|string|max:255',
+    //         'description' => 'nullable|string',
+    //         'ref_number' => 'required|unique:dossiers,ref_number',
+    //     ]);
+
+    //     $dossier = Dossier::create($validated);
+
+    //     return Redirect::route('dossiers.show', $dossier->id)->with('success', 'Dossier ouvert avec succès.');
+    // }
+
+    public function store(Request $request, BrevoService $brevo)
     {
-        // Génération de ref si vide (Format: ANNEE-00X)
-        if (empty($request->ref_number)) {
-            $count = Dossier::whereYear('created_at', date('Y'))->count() + 1;
-            $request->merge(['ref_number' => date('Y') . '-' . str_pad($count, 3, '0', STR_PAD_LEFT)]);
+        $dossier = Dossier::create($request->all());
+
+        // Si on attribue l'avocat dès la création du dossier
+        if ($dossier->lawyer_id) {
+            $lawyer = \App\Models\User::find($dossier->lawyer_id);
+            if ($lawyer && $lawyer->email) {
+                try {
+                    // Pas de RDV possible à la seconde où on crée le dossier, donc on envoie une liste vide collect([])
+                    $brevo->sendLawyerAssignmentNotification($lawyer->email, $lawyer->name, $dossier, collect([]));
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error("Erreur email assignation avocat: " . $e->getMessage());
+                }
+            }
         }
 
-        $validated = $request->validate([
-            'client_id' => 'required|exists:clients,id',
-            'lawyer_id' => 'nullable|exists:users,id',
-            'type' => 'required|string',
-            'status' => 'required|string',
-            'subject' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'ref_number' => 'required|unique:dossiers,ref_number',
-        ]);
-
-        $dossier = Dossier::create($validated);
-
-        return Redirect::route('dossiers.show', $dossier->id)->with('success', 'Dossier ouvert avec succès.');
+        return redirect()->back()->with('success', 'Dossier créé.');
     }
 
     public function show(Dossier $dossier)
@@ -113,20 +135,50 @@ class DossierController extends Controller
         ]);
     }
 
-    public function update(Request $request, Dossier $dossier)
+    // public function update(Request $request, Dossier $dossier)
+    // {
+    //     $validated = $request->validate([
+    //         'client_id' => 'required|exists:clients,id',
+    //         'lawyer_id' => 'nullable|exists:users,id',
+    //         'type' => 'required|string',
+    //         'status' => 'required|string',
+    //         'subject' => 'required|string|max:255',
+    //         'description' => 'nullable|string',
+    //     ]);
+
+    //     $dossier->update($validated);
+
+    //     return Redirect::back()->with('success', 'Dossier mis à jour.');
+    // }
+    public function update(Request $request, Dossier $dossier, BrevoService $brevo)
     {
-        $validated = $request->validate([
-            'client_id' => 'required|exists:clients,id',
-            'lawyer_id' => 'nullable|exists:users,id',
-            'type' => 'required|string',
-            'status' => 'required|string',
-            'subject' => 'required|string|max:255',
-            'description' => 'nullable|string',
-        ]);
+        // On mémorise l'ancien avocat pour comparer
+        $oldLawyerId = $dossier->lawyer_id;
 
-        $dossier->update($validated);
+        $dossier->update($request->all());
 
-        return Redirect::back()->with('success', 'Dossier mis à jour.');
+        // CONDITION : Si l'avocat a été modifié ET qu'un avocat est bien sélectionné
+        if ($request->lawyer_id && $request->lawyer_id != $oldLawyerId) {
+            
+            $lawyer = \App\Models\User::find($request->lawyer_id);
+            
+            // On cherche tous les RDV de ce dossier qui sont dans le futur
+            $upcomingAppointments = Appointment::where('dossier_id', $dossier->id)
+                ->where('start_time', '>=', now())
+                ->where('status', '!=', 'cancelled')
+                ->orderBy('start_time', 'asc')
+                ->get();
+                
+            if ($lawyer && $lawyer->email) {
+                try {
+                    $brevo->sendLawyerAssignmentNotification($lawyer->email, $lawyer->name, $dossier, $upcomingAppointments);
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error("Erreur email assignation avocat update: " . $e->getMessage());
+                }
+            }
+        }
+
+        return redirect()->back()->with('success', 'Dossier mis à jour.');
     }
 
     
