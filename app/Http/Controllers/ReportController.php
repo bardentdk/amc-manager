@@ -8,6 +8,9 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use App\Services\BrevoService;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Notifications\SystemAlert;
+use App\Models\Dossier;
+use App\Services\GroqService;
 
 class ReportController extends Controller
 {
@@ -33,7 +36,32 @@ class ReportController extends Controller
 
         Report::create($data);
 
-        return Redirect::back()->with('success', 'Compte rendu sauvegardé.');
+        // On récupère le dossier lié pour savoir qui notifier
+        $dossier = \App\Models\Dossier::with('lawyer')->find($request->dossier_id);
+        $authorName = auth()->user()->name;
+
+        // 🔔 NOTIFICATION CLOCHE : Avertir l'avocat
+        if ($dossier->lawyer_id && $dossier->lawyer_id !== auth()->id()) {
+            $dossier->lawyer->notify(new SystemAlert(
+                "Nouveau compte rendu",
+                "Une nouvelle note a été ajoutée au dossier {$dossier->ref_number} par {$authorName}.",
+                route('dossiers.show', $dossier->id)
+            ));
+        }
+
+        // Optionnel : Notifier les admins si c'est l'avocat qui rédige
+        if (auth()->id() === $dossier->lawyer_id) {
+            $admins = \App\Models\User::role('admin')->get();
+            foreach ($admins as $admin) {
+                $admin->notify(new SystemAlert(
+                    "Compte rendu Avocat",
+                    "Me {$authorName} a rédigé un CR sur le dossier {$dossier->ref_number}.",
+                    route('dossiers.show', $dossier->id)
+                ));
+            }
+        }
+
+        return redirect()->back()->with('success', 'Compte rendu ajouté.');
     }
 
     public function update(Request $request, Report $report)
@@ -65,7 +93,31 @@ class ReportController extends Controller
         $report->delete();
         return Redirect::back()->with('success', 'Compte rendu supprimé.');
     }
+    public function generateAi(Request $request, GroqService $groq)
+    {
+        $request->validate([
+            'dossier_id' => 'required|exists:dossiers,id',
+            'type' => 'required|string',
+            'notes' => 'required|string|max:2000',
+        ]);
 
+        $dossier = Dossier::findOrFail($request->dossier_id);
+        $context = "Réf: {$dossier->ref_number} - Objet: {$dossier->subject}";
+
+        try {
+            $generatedText = $groq->generateReport($request->type, $request->notes, $context);
+            
+            return response()->json([
+                'success' => true,
+                'content' => $generatedText
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la génération avec l\'IA.'
+            ], 500);
+        }
+    }
     // 1. TÉLÉCHARGER LE PDF
     public function download(Report $report)
     {

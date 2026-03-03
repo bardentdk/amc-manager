@@ -1,8 +1,9 @@
 <script setup>
-import { watch } from 'vue';
+import { watch, ref } from 'vue';
 import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue';
 import { useForm } from '@inertiajs/vue3';
-import { SparklesIcon } from '@heroicons/vue/24/solid'; // Pour le bouton IA futur
+import axios from 'axios';
+import { SparklesIcon, ArrowPathIcon } from '@heroicons/vue/24/solid'; // Pour le bouton IA futur
 
 const props = defineProps({
     show: Boolean,
@@ -17,6 +18,7 @@ const form = useForm({
     type: 'legal_meeting',
     report_date: new Date().toISOString().substr(0, 10),
     content_body: '',
+    content:'',
     status: 'draft',
 });
 
@@ -43,12 +45,96 @@ const submit = () => {
     }
 };
 
-const generateWithAI = () => {
-    alert("Fonctionnalité IA à venir ! Elle générera un résumé structuré ici.");
+// const generateWithAI = () => {
+//     alert("Fonctionnalité IA à venir ! Elle générera un résumé structuré ici.");
+// };
+// Variables pour l'IA
+const roughNotes = ref('');
+const isGenerating = ref(false);
+
+const generateWithAI = async () => {
+    if (!roughNotes.value) {
+        alert("Veuillez d'abord saisir quelques notes brutes.");
+        return;
+    }
+
+    isGenerating.value = true;
+    try {
+        const response = await axios.post(route('reports.generateAi'), {
+            dossier_id: props.dossierId,
+            type: form.type,
+            notes: roughNotes.value
+        });
+
+        if (response.data.success) {
+            // On injecte le texte généré dans le champ principal du compte rendu
+            form.content = response.data.content;
+            roughNotes.value = ''; // Optionnel : vider les notes brutes
+        }
+    } catch (error) {
+        alert("Une erreur est survenue lors de la génération IA.");
+        console.error(error);
+    } finally {
+        isGenerating.value = false;
+    }
 };
 </script>
-
 <template>
+    <div class="space-y-4 mx-5 my-5">
+        
+        <div>
+            <label class="block text-sm font-medium text-slate-700">Type de compte rendu</label>
+            <select v-model="form.type" class="p-3 mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                <option value="legal_meeting">RDV Avocat</option>
+                <option value="court_hearing">Audience</option>
+                <option value="closing">Closing</option>
+                <option value="phone_call">Appel téléphonique</option>
+            </select>
+        </div>
+
+        <div class="bg-indigo-50 rounded-xl p-4 border border-indigo-100">
+            <div class="flex items-center justify-between mb-2">
+                <label class="block text-sm font-bold text-indigo-900 flex items-center gap-2">
+                    <SparklesIcon class="h-5 w-5 text-indigo-600" />
+                    Assistant IA (Notes rapides)
+                </label>
+            </div>
+            <textarea 
+                v-model="roughNotes" 
+                rows="2" 
+                placeholder="Ex: Client en retard. Accord trouvé pour 50k€. Prochaine audience le 12 mai."
+                class="px-2 py-2 block w-full rounded-md border-indigo-200 bg-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm placeholder:text-slate-400 text-slate-700"
+            ></textarea>
+            
+            <div class="mt-3 flex justify-end">
+                <button 
+                    type="button" 
+                    @click="generateWithAI" 
+                    :disabled="isGenerating || !roughNotes"
+                    class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:opacity-50 transition-all"
+                >
+                    <ArrowPathIcon v-if="isGenerating" class="h-4 w-4 animate-spin" />
+                    <SparklesIcon v-else class="h-4 w-4" />
+                    {{ isGenerating ? 'Génération en cours...' : 'Générer la rédaction' }}
+                </button>
+            </div>
+        </div>
+
+        <div>
+            <label class=" block text-sm font-medium text-slate-700">Contenu du Compte Rendu final</label>
+            <textarea 
+                v-model="form.content" 
+                rows="8" 
+                required
+                class="px-2 mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                placeholder="Le compte rendu généré apparaîtra ici..."
+            ></textarea>
+        </div>
+
+    </div>
+    
+    </template>
+<!-- <template>
     <TransitionRoot as="template" :show="show">
         <Dialog as="div" class="relative z-50" @close="emit('close')">
             <TransitionChild as="template" enter="ease-out duration-300" enter-from="opacity-0" enter-to="opacity-100" leave="ease-in duration-200" leave-from="opacity-100" leave-to="opacity-0">
@@ -123,4 +209,4 @@ const generateWithAI = () => {
             </div>
         </Dialog>
     </TransitionRoot>
-</template>
+</template> -->

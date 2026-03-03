@@ -9,6 +9,7 @@ use App\Services\BrevoService;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Carbon\Carbon;
+use App\Notifications\SystemAlert;
 
 class AppointmentController extends Controller
 {
@@ -49,6 +50,7 @@ class AppointmentController extends Controller
     {
         $validated = $request->validate([
             'dossier_id' => 'nullable|exists:dossiers,id',
+            'client_id' => 'nullable|exists:clients,id', // Ajouté au cas où tu l'envoies directement
             'title' => 'required|string|max:255',
             'type' => 'required|in:legal,closing,phone,other',
             'start_time' => 'required|date',
@@ -56,20 +58,26 @@ class AppointmentController extends Controller
             'location' => 'nullable|string',
             'notes' => 'nullable|string',
         ]);
-
-        // Si lié à un dossier, on lie aussi le client automatiquement
+        
+        // Si lié à un dossier, on récupère le client lié à ce dossier automatiquement
         if ($request->dossier_id) {
             $dossier = \App\Models\Dossier::find($request->dossier_id);
-            $validated['client_id'] = $dossier->client_id;
+            if ($dossier) {
+                $validated['client_id'] = $dossier->client_id;
+            }
         }
 
-        $appointment = Appointment::create($request->all());
+        // CORRECTION 1 : On utilise $validated au lieu de $request->all()
+        // Cela garantit que le 'client_id' qu'on vient d'injecter au-dessus est bien sauvegardé !
+        $appointment = Appointment::create($validated);
 
-        // On charge le dossier et le client pour récupérer l'email
-        $appointment->load(['dossier.client']);
+        // On charge le dossier (et son client), ainsi que la relation 'client' directe
+        $appointment->load(['dossier.client', 'client']);
 
-        // Envoi de l'email au client si on a son adresse
-        $client = $appointment->dossier->client;
+        // CORRECTION 2 : L'opérateur "?->" (Null Safe)
+        // PHP va chercher le client via le dossier. Si le dossier est null, il ne plante pas 
+        // et passe à la suite (??) pour chercher s'il y a un client direct.
+        $client = $appointment->dossier?->client ?? $appointment->client;
         
         if ($client && $client->email) {
             try {
@@ -81,11 +89,22 @@ class AppointmentController extends Controller
                 );
             } catch (\Exception $e) {
                 // On log l'erreur pour ne pas bloquer l'interface de l'assistant(e)
-                Log::error("Erreur d'envoi de confirmation de RDV: " . $e->getMessage());
+                \Illuminate\Support\Facades\Log::error("Erreur d'envoi de confirmation de RDV: " . $e->getMessage());
             }
         }
-
-        return redirect()->back()->with('success', 'Rendez-vous créé et email de confirmation envoyé.');
+        // 🔔 NOTIFICATION CLOCHE : On prévient l'avocat du dossier si ce n'est pas lui qui a créé le RDV
+        $lawyer = $appointment->dossier?->lawyer;
+        
+        if ($lawyer && $lawyer->id !== auth()->id()) {
+            $dateFormatee = \Carbon\Carbon::parse($appointment->start_time)->format('d/m/Y à H:i');
+            
+            $lawyer->notify(new SystemAlert(
+                "Nouveau Rendez-vous",
+                "Un RDV a été planifié le {$dateFormatee} pour le dossier {$appointment->dossier->ref_number}.",
+                route('dossiers.show', $appointment->dossier_id) // Redirige vers le dossier
+            ));
+        }
+        return redirect()->back()->with('success', 'Rendez-vous créé et email de confirmation envoyé (le cas échéant).');
     }
 
     public function update(Request $request, Appointment $appointment)

@@ -1,6 +1,7 @@
 <script setup>
+import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/vue';
 import { computed } from 'vue';
-import { Link, usePage } from '@inertiajs/vue3';
+import { Link, usePage, router } from '@inertiajs/vue3';
 import { 
     HomeIcon, 
     UsersIcon, 
@@ -9,19 +10,35 @@ import {
     UserPlusIcon,
     ArrowRightOnRectangleIcon, 
     BellIcon, 
+    CheckCircleIcon,
     MagnifyingGlassIcon 
 } from '@heroicons/vue/24/outline';
 const page = usePage();
-const user = computed(() => page.props.auth?.user || { name: 'Invité', role: 'guest' });
+const user = computed(() => page.props.auth?.user || { name: 'Invité', role: 'guest', roles: [] });
 
-// Navigation principale
-const navigation = [
-    { name: 'Tableau de bord', href: route('dashboard'), icon: HomeIcon, active: route().current('dashboard') },
-    { name: 'Clients', href: route('clients.index'), icon: UsersIcon, active: route().current('clients.*') },
-    { name: 'Dossiers', href: route('dossiers.index'), icon: FolderIcon, active: route().current('dossiers.*') },
-    { name: 'Agenda', href: route('appointments.index'), icon: CalendarIcon, active: route().current('appointments.*') },
-    { name: 'Utilisateurs', href: route('users.index'), icon: UserPlusIcon, active: route().current('users.*') },
-];
+// Navigation principale dynamique selon le rôle
+const navigation = computed(() => {
+    // On vérifie si l'utilisateur possède le rôle 'admin'
+    const isAdmin = user.value.roles?.includes('admin');
+
+    return [
+        { name: 'Tableau de bord', href: route('dashboard'), icon: HomeIcon, active: route().current('dashboard') },
+        { name: 'Clients', href: route('clients.index'), icon: UsersIcon, active: route().current('clients.*') },
+        { name: 'Dossiers', href: route('dossiers.index'), icon: FolderIcon, active: route().current('dossiers.*') },
+        { name: 'Agenda', href: route('appointments.index'), icon: CalendarIcon, active: route().current('appointments.*') },
+        
+        // La ligne magique : On ajoute l'onglet "Utilisateurs" UNIQUEMENT si isAdmin est vrai
+        ...(isAdmin ? [{ name: 'Utilisateurs', href: route('users.index'), icon: UserPlusIcon, active: route().current('users.*') }] : [])
+    ];
+});
+
+const markAsRead = (id) => {
+    router.post(route('notifications.read', id), {}, { preserveScroll: true });
+};
+
+const markAllAsRead = () => {
+    router.post(route('notifications.readAll'), {}, { preserveScroll: true });
+};
 </script>
 
 <template>
@@ -95,10 +112,50 @@ const navigation = [
                         <input type="text" placeholder="Rechercher (Cmd+K)" class="bg-transparent border-none text-sm p-0 focus:ring-0 w-full placeholder:text-slate-400 text-slate-700">
                     </div>
 
-                    <button class="relative p-2 text-slate-500 hover:text-indigo-600 transition-colors rounded-full hover:bg-slate-100">
-                        <BellIcon class="h-6 w-6" />
-                        <span class="absolute top-2 right-2 h-2 w-2 bg-rose-500 rounded-full ring-2 ring-white"></span>
-                    </button>
+                    <Menu as="div" class="relative ml-4 flex-shrink-0">
+                        <div>
+                            <MenuButton class="relative rounded-full bg-white p-1 text-slate-400 hover:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                                <span class="sr-only">Voir les notifications</span>
+                                <BellIcon class="h-6 w-6" aria-hidden="true" />
+                                
+                                <span v-if="$page.props.auth.user.unreadNotificationsCount > 0" class="absolute top-0 right-0 block h-2.5 w-2.5 transform translate-x-1 -translate-y-1 rounded-full bg-red-500 ring-2 ring-white"></span>
+                            </MenuButton>
+                        </div>
+                        <transition enter-active-class="transition ease-out duration-100" enter-from-class="transform opacity-0 scale-95" enter-to-class="transform opacity-100 scale-100" leave-active-class="transition ease-in duration-75" leave-from-class="transform opacity-100 scale-100" leave-to-class="transform opacity-0 scale-95">
+                            <MenuItems class="absolute right-0 z-50 mt-2 w-80 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                                
+                                <div class="px-4 py-3 border-b border-slate-100 flex justify-between items-center">
+                                    <p class="text-sm font-medium text-slate-900">Notifications</p>
+                                    <button v-if="$page.props.auth.user.unreadNotificationsCount > 0" @click="markAllAsRead" class="text-xs text-indigo-600 hover:text-indigo-800">Tout marquer comme lu</button>
+                                </div>
+
+                                <div class="max-h-96 overflow-y-auto">
+                                    <div v-if="$page.props.auth.user.notifications.length === 0" class="px-4 py-6 text-center text-sm text-slate-500">
+                                        Aucune notification.
+                                    </div>
+                                    
+                                    <MenuItem v-for="notification in $page.props.auth.user.notifications" :key="notification.id" v-slot="{ active }">
+                                        <div :class="[notification.read_at === null ? 'bg-indigo-50/50' : '', 'px-4 py-3 border-b border-slate-50 relative group cursor-pointer hover:bg-slate-50 transition']">
+                                            <div class="flex items-start justify-between">
+                                                <div class="flex-1 min-w-0" @click="notification.data.url ? router.get(notification.data.url) : null">
+                                                    <p :class="[notification.read_at === null ? 'font-semibold text-slate-900' : 'font-medium text-slate-700', 'text-sm truncate']">
+                                                        {{ notification.data.title }}
+                                                    </p>
+                                                    <p class="text-xs text-slate-500 mt-0.5 line-clamp-2">{{ notification.data.message }}</p>
+                                                    <p class="text-xs text-slate-400 mt-1">{{ new Date(notification.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute:'2-digit' }) }}</p>
+                                                </div>
+                                                
+                                                <button v-if="notification.read_at === null" @click.stop="markAsRead(notification.id)" class="ml-2 p-1 text-slate-400 hover:text-indigo-600 opacity-0 group-hover:opacity-100 transition" title="Marquer comme lu">
+                                                    <CheckCircleIcon class="h-5 w-5" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </MenuItem>
+                                </div>
+                                
+                            </MenuItems>
+                        </transition>
+                    </Menu>
                 </div>
             </header>
 

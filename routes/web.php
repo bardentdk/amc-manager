@@ -10,6 +10,7 @@ use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\NotificationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -55,5 +56,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/documents/{document}/download', [DocumentController::class, 'download'])->name('documents.download');
     Route::get('/documents/{document}/preview', [DocumentController::class, 'preview'])->name('documents.preview');
     Route::delete('/documents/{document}', [DocumentController::class, 'destroy'])->name('documents.destroy');
+    
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead'])->name('notifications.readAll');
 
+    Route::post('/reports/generate-ai', [ReportController::class, 'generateAi'])->name('reports.generateAi');
 });

@@ -35,15 +35,35 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        // return array_merge(parent::share($request), [
+        //     // C'est ici qu'on partage l'utilisateur globalement
+        //     'auth' => [
+        //         'user' => $request->user(),
+        //     ],
+        //     // On peut aussi partager les messages flash (succès/erreur)
+        //     'flash' => [
+        //         'success' => fn () => $request->session()->get('success'),
+        //         'error' => fn () => $request->session()->get('error'),
+        //     ],
+        // ]);
         return array_merge(parent::share($request), [
-            // C'est ici qu'on partage l'utilisateur globalement
             'auth' => [
-                'user' => $request->user(),
+                'user' => $request->user() ? [
+                    'id' => $request->user()->id,
+                    'name' => $request->user()->name,
+                    'email' => $request->user()->email,
+                    // On ajoute les rôles (utile pour le frontend)
+                    'roles' => $request->user()->getRoleNames(),
+                    // 👇 AJOUT DES NOTIFICATIONS ICI 👇
+                    'unreadNotificationsCount' => $request->user()->unreadNotifications()->count(),
+                    // On prend seulement les 5 plus récentes pour le menu déroulant
+                    'notifications' => $request->user()->notifications()->take(5)->get(), 
+                ] : null,
             ],
-            // On peut aussi partager les messages flash (succès/erreur)
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
+                'warning' => fn () => $request->session()->get('warning'),
             ],
         ]);
     }

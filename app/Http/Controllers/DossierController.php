@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Appointment;
 use App\Services\BrevoService;
+use App\Notifications\SystemAlert;
 
 class DossierController extends Controller
 {
@@ -85,16 +86,25 @@ class DossierController extends Controller
     {
         $dossier = Dossier::create($request->all());
 
-        // Si on attribue l'avocat dès la création du dossier
         if ($dossier->lawyer_id) {
             $lawyer = \App\Models\User::find($dossier->lawyer_id);
+            
+            // 1. Email (déjà en place)
             if ($lawyer && $lawyer->email) {
                 try {
-                    // Pas de RDV possible à la seconde où on crée le dossier, donc on envoie une liste vide collect([])
                     $brevo->sendLawyerAssignmentNotification($lawyer->email, $lawyer->name, $dossier, collect([]));
                 } catch (\Exception $e) {
-                    \Illuminate\Support\Facades\Log::error("Erreur email assignation avocat: " . $e->getMessage());
+                    \Illuminate\Support\Facades\Log::error("Erreur email: " . $e->getMessage());
                 }
+            }
+            
+            // 2. 🔔 NOTIFICATION CLOCHE (Si ce n'est pas l'avocat lui-même qui crée le dossier)
+            if ($lawyer && $lawyer->id !== auth()->id()) {
+                $lawyer->notify(new SystemAlert(
+                    "Nouveau dossier attribué",
+                    "Le dossier {$dossier->ref_number} ({$dossier->subject}) vous a été confié.",
+                    route('dossiers.show', $dossier->id)
+                ));
             }
         }
 
@@ -135,47 +145,72 @@ class DossierController extends Controller
         ]);
     }
 
-    // public function update(Request $request, Dossier $dossier)
+    
+    // public function update(Request $request, Dossier $dossier, BrevoService $brevo)
     // {
-    //     $validated = $request->validate([
-    //         'client_id' => 'required|exists:clients,id',
-    //         'lawyer_id' => 'nullable|exists:users,id',
-    //         'type' => 'required|string',
-    //         'status' => 'required|string',
-    //         'subject' => 'required|string|max:255',
-    //         'description' => 'nullable|string',
-    //     ]);
+    //     // On mémorise l'ancien avocat pour comparer
+    //     $oldLawyerId = $dossier->lawyer_id;
 
-    //     $dossier->update($validated);
+    //     $dossier->update($request->all());
 
-    //     return Redirect::back()->with('success', 'Dossier mis à jour.');
+    //     // CONDITION : Si l'avocat a été modifié ET qu'un avocat est bien sélectionné
+    //     if ($request->lawyer_id && $request->lawyer_id != $oldLawyerId) {
+    //         $lawyer = \App\Models\User::find($request->lawyer_id);
+            
+    //         // Envoyer la notification interne dans la cloche
+    //         $lawyer->notify(new SystemAlert(
+    //             "Nouveau dossier : {$dossier->ref_number}", 
+    //             "Le dossier {$dossier->subject} vient de vous être attribué.",
+    //             route('dossiers.show', $dossier->id) // L'URL où ça redirige quand on clique
+    //         ));
+            
+    //         // On cherche tous les RDV de ce dossier qui sont dans le futur
+    //         $upcomingAppointments = Appointment::where('dossier_id', $dossier->id)
+    //             ->where('start_time', '>=', now())
+    //             ->where('status', '!=', 'cancelled')
+    //             ->orderBy('start_time', 'asc')
+    //             ->get();
+                
+    //         if ($lawyer && $lawyer->email) {
+    //             try {
+    //                 $brevo->sendLawyerAssignmentNotification($lawyer->email, $lawyer->name, $dossier, $upcomingAppointments);
+    //             } catch (\Exception $e) {
+    //                 \Illuminate\Support\Facades\Log::error("Erreur email assignation avocat update: " . $e->getMessage());
+    //             }
+    //         }
+    //     }
+
+    //     return redirect()->back()->with('success', 'Dossier mis à jour.');
     // }
     public function update(Request $request, Dossier $dossier, BrevoService $brevo)
     {
-        // On mémorise l'ancien avocat pour comparer
         $oldLawyerId = $dossier->lawyer_id;
-
         $dossier->update($request->all());
 
-        // CONDITION : Si l'avocat a été modifié ET qu'un avocat est bien sélectionné
+        // Cas 1 : Changement d'avocat
         if ($request->lawyer_id && $request->lawyer_id != $oldLawyerId) {
-            
             $lawyer = \App\Models\User::find($request->lawyer_id);
+            // ... (ton code pour envoyer l'email Brevo reste ici) ...
             
-            // On cherche tous les RDV de ce dossier qui sont dans le futur
-            $upcomingAppointments = Appointment::where('dossier_id', $dossier->id)
-                ->where('start_time', '>=', now())
-                ->where('status', '!=', 'cancelled')
-                ->orderBy('start_time', 'asc')
-                ->get();
-                
-            if ($lawyer && $lawyer->email) {
-                try {
-                    $brevo->sendLawyerAssignmentNotification($lawyer->email, $lawyer->name, $dossier, $upcomingAppointments);
-                } catch (\Exception $e) {
-                    \Illuminate\Support\Facades\Log::error("Erreur email assignation avocat update: " . $e->getMessage());
-                }
+            // 🔔 NOTIFICATION CLOCHE : Nouvel avocat assigné
+            if ($lawyer && $lawyer->id !== auth()->id()) {
+                $lawyer->notify(new SystemAlert(
+                    "Dossier attribué : {$dossier->ref_number}",
+                    "Vous êtes désormais en charge du dossier {$dossier->subject}.",
+                    route('dossiers.show', $dossier->id)
+                ));
             }
+        } 
+        // Cas 2 : Simple mise à jour du dossier (par un assistant par exemple)
+        elseif ($dossier->lawyer_id && auth()->id() !== $dossier->lawyer_id) {
+            $lawyer = \App\Models\User::find($dossier->lawyer_id);
+            
+            // 🔔 NOTIFICATION CLOCHE : Mise à jour générale
+            $lawyer?->notify(new SystemAlert(
+                "Mise à jour : {$dossier->ref_number}",
+                "Le dossier a été modifié par " . auth()->user()->name . ".",
+                route('dossiers.show', $dossier->id)
+            ));
         }
 
         return redirect()->back()->with('success', 'Dossier mis à jour.');
