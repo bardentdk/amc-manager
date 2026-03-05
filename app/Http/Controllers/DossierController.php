@@ -84,7 +84,31 @@ class DossierController extends Controller
 
     public function store(Request $request, BrevoService $brevo)
     {
-        $dossier = Dossier::create($request->all());
+        // 1. Validation de base
+        $validatedData = $request->validate([
+            'client_id' => 'required|exists:clients,id',
+            'subject' => 'required|string|max:255',
+            'type' => 'nullable|string',
+            'status' => 'required|in:open,in_progress,waiting,closed',
+            'lawyer_id' => 'nullable|exists:users,id',
+            'description' => 'nullable|string',
+        ]);
+
+        // 2. ⚡ AUTO-GÉNÉRATION DU NUMÉRO DE RÉFÉRENCE ⚡
+        // Exemple : 2026-0001
+        $currentYear = date('Y');
+        $lastDossier = Dossier::whereYear('created_at', $currentYear)->orderBy('id', 'desc')->first();
+        
+        if ($lastDossier && preg_match('/-(\d+)$/', $lastDossier->ref_number, $matches)) {
+            $nextNumber = intval($matches[1]) + 1;
+        } else {
+            $nextNumber = 1;
+        }
+        
+        $validatedData['ref_number'] = $currentYear . '-' . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
+
+        // 3. Création du dossier avec le tableau validé (et non $request->all())
+        $dossier = Dossier::create($validatedData);
 
         if ($dossier->lawyer_id) {
             $lawyer = \App\Models\User::find($dossier->lawyer_id);

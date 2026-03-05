@@ -16,31 +16,28 @@ class ReportController extends Controller
 {
     public function store(Request $request)
     {
+        // 1. Validation parfaitement alignée sur l'objet envoyé par Vue.js
         $validated = $request->validate([
-            'dossier_id' => 'required|exists:dossiers,id',
-            'type' => 'required|in:closing,legal_meeting,phone_call,court_hearing',
+            'dossier_id'  => 'required|exists:dossiers,id',
+            'type'        => 'required|in:closing,legal_meeting,phone_call,court_hearing',
             'report_date' => 'required|date',
-            'content_body' => 'required|string', // On valide le texte brut
-            'status' => 'required|in:draft,finalized',
+            'content'     => 'required|array',         // Laravel vérifie que content est bien un objet/tableau
+            'content.body'=> 'required|string',        // Laravel vérifie la présence de la clé 'body'
+            'status'      => 'required|in:draft,finalized',
         ]);
 
-        // On construit le JSON
-        $data = [
-            'dossier_id' => $validated['dossier_id'],
-            'author_id' => Auth::id(), // L'utilisateur connecté est l'auteur
-            'type' => $validated['type'],
-            'report_date' => $validated['report_date'],
-            'status' => $validated['status'],
-            'content' => ['body' => $validated['content_body']], // Structure JSON
-        ];
+        // 2. On ajoute automatiquement l'auteur (l'utilisateur connecté)
+        $validated['author_id'] = auth()->id();
 
-        Report::create($data);
+        // 3. Création propre (Laravel va convertir automatiquement le tableau 'content' en JSON)
+        // ⚠️ Prérequis : dans le modèle Report.php, tu dois avoir : protected $casts = ['content' => 'array'];
+        $report = Report::create($validated);
 
-        // On récupère le dossier lié pour savoir qui notifier
-        $dossier = \App\Models\Dossier::with('lawyer')->find($request->dossier_id);
+        // 4. Gestion des notifications (La Cloche)
+        $dossier = \App\Models\Dossier::with('lawyer')->find($validated['dossier_id']);
         $authorName = auth()->user()->name;
 
-        // 🔔 NOTIFICATION CLOCHE : Avertir l'avocat
+        // Cas A : L'auteur n'est PAS l'avocat du dossier -> on notifie l'avocat
         if ($dossier->lawyer_id && $dossier->lawyer_id !== auth()->id()) {
             $dossier->lawyer->notify(new SystemAlert(
                 "Nouveau compte rendu",
@@ -49,7 +46,7 @@ class ReportController extends Controller
             ));
         }
 
-        // Optionnel : Notifier les admins si c'est l'avocat qui rédige
+        // Cas B : L'auteur EST l'avocat du dossier -> on notifie les admins
         if (auth()->id() === $dossier->lawyer_id) {
             $admins = \App\Models\User::role('admin')->get();
             foreach ($admins as $admin) {
@@ -61,7 +58,7 @@ class ReportController extends Controller
             }
         }
 
-        return redirect()->back()->with('success', 'Compte rendu ajouté.');
+        return redirect()->back()->with('success', 'Compte rendu sauvegardé avec succès.');
     }
 
     public function update(Request $request, Report $report)

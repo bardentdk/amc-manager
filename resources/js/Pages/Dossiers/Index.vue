@@ -82,7 +82,8 @@ const statusLabels = {
                     <h3 class="mt-3 text-lg font-semibold text-slate-900 group-hover:text-indigo-600 truncate">
                         {{ dossier.subject }}
                     </h3>
-                    <p class="text-sm text-slate-500 mt-1">{{ dossier.client.name }}</p>
+                    <!-- <p class="text-sm text-slate-500 mt-1">{{ dossier.client.name }}</p> -->
+                    <p class="text-sm text-slate-500 mt-1">{{ dossier.client?.name || 'Client inconnu' }}</p>
                     <div class="mt-4 flex items-center text-xs text-slate-400">
                         <FolderIcon class="mr-1.5 h-4 w-4 flex-shrink-0" />
                         {{ dossier.type }}
@@ -90,7 +91,9 @@ const statusLabels = {
                 </div>
                 <div class="bg-slate-50 px-5 py-3 border-t border-slate-100 flex justify-between items-center">
                     <div class="text-xs text-slate-500">
-                        Avocat: <span class="font-medium text-slate-700">{{ dossier.lawyer ? dossier.lawyer.name : 'Non assigné' }}</span>
+                        Avocat: 
+                        <!-- <span class="font-medium text-slate-700">{{ dossier.lawyer ? dossier.lawyer.name : 'Non assigné' }}</span> -->
+                        <span class="font-medium text-slate-700">{{ dossier.lawyer?.name || 'Non assigné' }}</span>
                     </div>
                 </div>
             </Link>

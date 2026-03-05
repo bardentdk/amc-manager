@@ -10,18 +10,17 @@ class Report extends Model
     use HasFactory;
 
     protected $fillable = [
-        'dossier_id',
-        'appointment_id', // Optionnel
-        'author_id',
-        'type', // closing, legal_meeting, phone_call, court_hearing
-        'report_date',
-        'content', // JSON
-        'status', // draft, finalized
+        'dossier_id', 
+        'author_id', 
+        'type', 
+        'status', 
+        'report_date', 
+        'content'
     ];
-
+    
     protected $casts = [
-        'report_date' => 'date',
-        'content' => 'array', // Convertit automatiquement le JSON en tableau PHP
+        'content' => 'array', 
+        'report_date' => 'datetime',
     ];
 
     // Relations
